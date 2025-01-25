@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/fondotransparente"
+    android:orientation="vertical"
+    >
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/headerDialog"
+        android:background="@drawable/solicitudesitem"
+        android:orientation="vertical">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="45dp"
+            android:orientation="vertical"
+            android:id="@+id/lyheader"
+            android:background="@drawable/headerdialogrechazada">
+
+            <TextView
+                android:id="@+id/txtSolicitud"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/Confirmacion"
+                android:gravity="center"
+                android:textStyle="bold"
+                android:layout_marginTop="10dp"
+                android:layout_marginLeft="10dp"
+                android:textColor="@color/colorWhite"
+                android:textSize="18sp"
+                android:layout_marginStart="10dp" />
+        </RelativeLayout>
+
+        <LinearLayout
+            android:id="@+id/lybody"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="20dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/txtTextoDialogo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+
+                    android:ellipsize="end"
+                    android:gravity="center"
+                    android:text="@string/TextoAlerta"
+                    android:textSize="18sp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_marginBottom="20dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnAceptar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/btnAceptar"
+                android:layout_margin="10dp"
+                android:textColor="@color/colorWhite"
+                android:textStyle="bold"
+                android:layout_marginBottom="20dp"
+                android:background="@drawable/btninfo"/>
+
+            <Button
+                android:id="@+id/btnCancelar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/btnCancelar"
+                android:layout_margin="10dp"
+                android:textColor="@color/colorWhite"
+                android:textStyle="bold"
+                android:layout_marginBottom="20dp"
+                android:background="@drawable/btnwarnig"/>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

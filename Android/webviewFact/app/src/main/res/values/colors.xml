@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#008577</color>
+    <color name="colorPrimaryDark">#00574B</color>
+    <color name="colorAccent">#D81B60</color>
+    <color name="colorGreen">#8DC449</color>
+    <color name="colorWhite">#FFFFFF</color>
+    <color name="colormMenu">#F2F2F2</color>
+    <color name="colorWarnig">#F08227</color>
+    <color name="colorRed">#BC1111</color>
+    <color name="colorCeleste">#00B6C2</color>
+    <color name="colorGris">#B7B2AC</color>
+
+
+    <color name="negro_semitransparente">#B2000000</color>
+    <color name="blanco">#fafafa</color>
+    <color name="negro">#000</color>
+    <color name="transparent">#00ffffff</color>
+</resources>

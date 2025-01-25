@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">SFF</string>
+        <string name="msjCon"><b>¡Ups!</b></string>
+        <string name="msjConnection">Se ha perdido la conexión, conéctese e intente de nuevo</string>
+        <string name="time_wait_check">200</string>
+        <string name="time_check">200</string>
+    <string name="Confirmacion">Confirmacion</string>
+    <string name="TextoAlerta">Error</string>
+    <string name="btnAceptar">Aceptar</string>
+    <string name="btnCancelar">Cancelar</string>
+</resources>
