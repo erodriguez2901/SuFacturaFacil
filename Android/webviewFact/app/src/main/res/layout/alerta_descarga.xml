@@ -54,13 +54,14 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
                 android:orientation="horizontal">
 
 
                 <ListView
                     android:id="@+id/lvopcionesDescarga"
                     android:layout_width="match_parent"
-                    android:layout_height="250dp"
+                    android:layout_height="280dp"
 
                     android:ellipsize="end"
                     android:gravity="center"

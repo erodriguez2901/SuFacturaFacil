@@ -1,3 +1,5 @@
+//Nuevos cambios manejo estado
+
 package com.facturasff.sff;
 
 import android.Manifest;
@@ -15,6 +17,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -28,8 +31,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.DownloadListener;
+import android.webkit.SslErrorHandler;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -67,8 +72,6 @@ import java.util.TimerTask;
 import static android.os.Environment.DIRECTORY_DOWNLOADS;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
-
-
     Context  context;
     public WebView webView;
     private ImageView imageConnect;
@@ -77,7 +80,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     boolean connectNew, connectOld;
     int TIME_WAIT_CHECK;
     int TIME_CHECK;
-    String url = "https://facturasff.com";
+    String url = "https://facturasff.com";// "https://www.google.com";// "https://facturasff.com";
     //String url = "https://192.168.1.93:85";
 
     private String filename = "Factura.pdf";
@@ -94,6 +97,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     String UrlPdf;
     String UrlXls;
 
+    OpcionesDescargaAdapter opcionesDescargaAdapter;
+
     private AlertError AlertError;
     private Boolean AlertaMostrada=false;
 
@@ -108,16 +113,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     public Button btnAceptar;
     ListView listViewOpcionesDescarga;
 
-
-
     private ValueCallback<Uri[]> filePathCallback;
     //Codigo para startActivityForResult;
     private static final int REQUEST_FILE = 5003;
     private static String TAG="TAG";
-
-
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -145,7 +144,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         networkConnected nc = new networkConnected();
 
         timer = new Timer();
-        timer.scheduleAtFixedRate(nc, TIME_WAIT_CHECK, TIME_CHECK);
+        timer.schedule(nc, TIME_WAIT_CHECK, TIME_CHECK);
 
         if (connectNew) {
             connectOld = false;
@@ -154,7 +153,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
 
         if (isNetworkConnected()) {
-            chargeWeb(String.valueOf(Html.fromHtml(url)));
+            if (savedInstanceState == null) {
+                chargeWeb(String.valueOf(Html.fromHtml(url)));
+            }
         }
 
         if (!isExternalStorageAvailable() || isExternalStorageReadOnly()) {
@@ -183,6 +184,22 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
     }
 
+    // Guarda el estado cuando la app va a segundo plano
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        webView.saveState(outState);
+    }
+
+    // Restaura el estado cuando el usuario vuelve
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        if (webView != null) {
+            webView.restoreState(savedInstanceState);
+        }
+    }
+
     private boolean isNetworkConnected() {
         ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context
                 .CONNECTIVITY_SERVICE);
@@ -203,24 +220,51 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     @SuppressLint("JavascriptInterface")
     private void chargeWeb(String web) {
         if (webView != null) {
+            try {
+                webView.getSettings().setDomStorageEnabled(true);
+                webView.getSettings().setSaveFormData(true);
+                webView.getSettings().setAllowContentAccess(true);
+                webView.getSettings().setAllowFileAccess(true);
+                webView.getSettings().setAllowFileAccessFromFileURLs(true);
+                webView.getSettings().setAllowUniversalAccessFromFileURLs(true);
 
-            webView.getSettings().setJavaScriptEnabled(true);
-            webView.getSettings().setJavaScriptEnabled(true);
-            webView.getSettings().setAppCacheEnabled(false);
-            webView.getSettings().setDomStorageEnabled(false);
-            webView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
+                webView.getSettings().setLoadsImagesAutomatically(true);
 
-            webView.setWebViewClient(new MyWebViewClient());
-            webView.setWebChromeClient(new MyWebChromeClient());
+                webView.getSettings().setSupportZoom(true);
+                //webView.getSettings().setClickable(true);
 
-            webView.clearHistory();
-            webView.clearFormData();
-            webView.clearCache(true);
+                webView.getSettings().setJavaScriptEnabled(true);
+                webView.getSettings().setDatabaseEnabled(true);
 
-            webView.loadUrl(web);
+                //webView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
+                webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
 
+                webView.setWebViewClient(new MyWebViewClient());
 
-            deleteCache(context);
+                webView.clearHistory();
+                webView.clearFormData();
+                webView.setWebChromeClient(new MyWebChromeClient());
+
+                android.webkit.CookieManager cookieManager = android.webkit.CookieManager.getInstance();
+                cookieManager.setAcceptCookie(true);
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    cookieManager.setAcceptThirdPartyCookies(webView, true);
+                    webView.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                }
+
+                //webView.clearCache(true);
+                webView.clearCache(true);
+                webView.clearHistory();
+                android.webkit.CookieManager.getInstance().removeAllCookies(null);
+                android.webkit.CookieManager.getInstance().flush();
+
+                webView.loadUrl(web);
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            //deleteCache(context);
             onLowMemory();
             //WebView.loadDataWithBaseURL(web,data,"text/html","UTF-8",web);
 
@@ -269,15 +313,18 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                                                         FileOutputStream fos = new FileOutputStream(myExternalFilexml);
                                                         fos.write(decodedString);
                                                         fos.close();
+
+                                                        DownloadArray.add(0,new DownloadInfo(base64xml, "application/octet-stream", filenameXML));
+                                                        ContadorXML++;
+                                                        Log.d("FileName", nameFile);
+
                                                         MostrarOpcionesDescarga();
 
                                                     } catch (IOException e) {
                                                         e.printStackTrace();
                                                     }
 
-                                                    DownloadArray.add(0,new DownloadInfo(base64xml, "application/octet-stream", filenameXML));
-                                                    ContadorXML++;
-                                                    Log.d("FileName", nameFile); // Prints: {"var1":"variable1","var2":"variable2"}
+                                                    // Prints: {"var1":"variable1","var2":"variable2"}
                                                 }
 
                                             }
@@ -309,14 +356,17 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                                                         FileOutputStream fos = new FileOutputStream(myExternalFile);
                                                         fos.write(decodedString);
                                                         fos.close();
+
+                                                        DownloadArray.add(0,new DownloadInfo(base64pdf, "application/pdf", filename));
+                                                        ContadorPdf++;
+                                                        Log.d("FileName", nameFile);
+
                                                         MostrarOpcionesDescarga();
 
                                                     } catch (IOException e) {
                                                         e.printStackTrace();
                                                     }
-                                                    DownloadArray.add(0,new DownloadInfo(base64pdf, "application/pdf", filename));
-                                                    ContadorPdf++;
-                                                    Log.d("FileName", nameFile); // Prints: {"var1":"variable1","var2":"variable2"}
+                                                    // Prints: {"var1":"variable1","var2":"variable2"}
                                                 }
                                             }
                                         }
@@ -334,8 +384,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                                                 String text = st.nextToken();
                                                 base64 = st.nextToken();
                                                 if (text.equals("data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64")) {
-
-
                                                     base64xls = base64;
 
                                                     String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
@@ -347,18 +395,20 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                                                         FileOutputStream fos = new FileOutputStream(myExternalFilexsl);
                                                         fos.write(decodedString);
                                                         fos.close();
+
+                                                        DownloadArray.add(0,new DownloadInfo(base64xls, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filenameExcel));
+                                                        Log.d("FileName", nameFile); // Prints: {"var1":"variable1","var2":"variable2"}
+
                                                         MostrarOpcionesDescarga();
                                                     } catch (IOException e) {
                                                         e.printStackTrace();
                                                     }
-                                                    DownloadArray.add(0,new DownloadInfo(base64xls, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filenameExcel));
-                                                    Log.d("FileName", nameFile); // Prints: {"var1":"variable1","var2":"variable2"}
-
                                                 }
                                             }
                                         }
                                     });
                                 }
+
                                 if (AlertaMostrada == false) {
                                     AlertaMostrada = true;
 
@@ -414,143 +464,80 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
         return;
     }
-    public void MostrarOpcionesDescarga( ) {
 
-        CallMethodFromAdapter listenerLectura = new CallMethodFromAdapter() {
+    public void MostrarOpcionesDescarga() {
+        runOnUiThread(new Runnable() {
             @Override
-            public void mtdResultado(String resultado) {
-                String NameFile=String.valueOf(DownloadArray.get(Integer.parseInt(resultado)).getDownloadName());
-                if(NameFile.endsWith("pdf")) {
-                    Intent intent;
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        //File storageDir = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);
-                        File storageDir = Environment.getExternalStoragePublicDirectory(DIRECTORY_DOWNLOADS);
-                        File imagePath = new File(storageDir, "");
-                        File image = new File(imagePath, NameFile);
-
-                        Uri photoUri = FileProvider.getUriForFile(MainActivity.this, getPackageName() +".provider", image);
-                        PackageManager packageManager = getPackageManager();
-                        intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setData(photoUri);
-                        intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        //startActivity(intent);
-                        intent = Intent.createChooser(intent, "Open File");
-                        List list = packageManager.queryIntentActivities(intent,PackageManager.MATCH_DEFAULT_ONLY);
-
-                        if (list.size() > 0) {
-                            try {
-                                startActivity(intent);
-                            } catch (ActivityNotFoundException e) {
-                                Toast.makeText(MainActivity.this, "Application not found", Toast.LENGTH_SHORT).show();
+            public void run() {
+                // Este es el "puente" que ya tienes bien definido
+                CallMethodFromAdapter listenerLectura = new CallMethodFromAdapter() {
+                    @Override
+                    public void mtdResultado(String resultado) {
+                        try {
+                            int position = Integer.parseInt(resultado);
+                            if (position >= 0 && position < DownloadArray.size()) {
+                                String NameFile = String.valueOf(DownloadArray.get(position).getDownloadName());
+                                // ESTO ES LO QUE ABRE EL ARCHIVO
+                                abrirArchivo(NameFile);
                             }
-                        }else{
-                            Toast.makeText(MainActivity.this, "No exiten aplicaciones para abrir el archivo", Toast.LENGTH_SHORT).show();
-                        }
-                    } else {
-                        intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setDataAndType(Uri.parse(filepath), "application/pdf");
-                        intent = Intent.createChooser(intent, "Open File");
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        startActivity(intent);
+                        } catch (Exception e) { e.printStackTrace(); }
                     }
-                }
+                };
 
-                if(NameFile.endsWith("xlsx")) {
-                    Intent intent;
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        //File storageDir = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);
-                        File storageDir = Environment.getExternalStoragePublicDirectory(DIRECTORY_DOWNLOADS);
-                        File imagePath = new File(storageDir, "");
-                        File image = new File(imagePath, NameFile);
+                Collections.sort(DownloadArray, (a, b) -> a.getDownloadName().compareToIgnoreCase(b.getDownloadName()));
 
-                        Uri photoUri = FileProvider.getUriForFile(MainActivity.this, getPackageName() +".provider", image);
-                        PackageManager packageManager = getPackageManager();
-                        intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                        intent.setDataAndType(photoUri, "application/vnd.ms-excel");
-                        intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        intent = Intent.createChooser(intent, "Open File");
-                        List list = packageManager.queryIntentActivities(intent,PackageManager.MATCH_DEFAULT_ONLY);
+                if (opcionesDescargaAdapter == null || AlertErrordialog == null || !AlertErrordialog.isShowing()) {
+                    // CAMBIO AQUÍ: El último parámetro debe ser 'listenerLectura'
+                    opcionesDescargaAdapter = new OpcionesDescargaAdapter(MainActivity.this, DownloadArray, listViewOpcionesDescarga, listenerLectura);
+                    listViewOpcionesDescarga.setAdapter(opcionesDescargaAdapter);
 
-                        if (list.size() > 0) {
-                            try {
-                                startActivity(intent);
-                            } catch (ActivityNotFoundException e) {
-                                Toast.makeText(MainActivity.this, "Application not found", Toast.LENGTH_SHORT).show();
-                            }
-                        }else{
-                            Toast.makeText(MainActivity.this, "No exiten aplicaciones para abrir el archivo", Toast.LENGTH_SHORT).show();
-                        }
-                    } else {
-                        intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setDataAndType(Uri.parse(filepath), "application/vnd.ms-excel");
-                        intent = Intent.createChooser(intent, "Open File");
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        startActivity(intent);
+                    if (AlertErrordialog != null && !AlertErrordialog.isShowing()) {
+                        AlertErrordialog.show();
                     }
+                } else {
+                    opcionesDescargaAdapter.notifyDataSetChanged();
                 }
-                if(NameFile.endsWith("xml")) {
-                    Intent intent;
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        File storageDir = Environment.getExternalStoragePublicDirectory(DIRECTORY_DOWNLOADS);
-                        //File storageDir = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);
-                        File imagePath = new File(storageDir, "");
-                        File image = new File(imagePath, NameFile);
-
-                        Uri photoUri = FileProvider.getUriForFile(MainActivity.this, getPackageName() +".provider", image);
-                        PackageManager packageManager = getPackageManager();
-                        intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                        intent.setDataAndType(photoUri, "text/plain");
-                        intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        intent = Intent.createChooser(intent, "Open File");
-                        List list = packageManager.queryIntentActivities(intent,PackageManager.MATCH_DEFAULT_ONLY);
-
-                        if (list.size() > 0) {
-                            try {
-                                startActivity(intent);
-                            } catch (ActivityNotFoundException e) {
-                                Toast.makeText(MainActivity.this, "Application not found", Toast.LENGTH_SHORT).show();
-                            }
-                        }else{
-                            Toast.makeText(MainActivity.this, "No exiten aplicaciones para abrir el archivo", Toast.LENGTH_SHORT).show();
-                        }
-                    } else {
-                        intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setDataAndType(Uri.parse(filepath), "text/plain");
-                        intent = Intent.createChooser(intent, "Open File");
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        startActivity(intent);
-                    }
-                }
+                listViewOpcionesDescarga.invalidateViews();
             }
-        };
-        class myComparator implements Comparator<DownloadInfo> {
-            @Override
-            public int compare(DownloadInfo a, DownloadInfo b) {
-                String nombrea =  a.getDownloadName();
-                StringTokenizer st = new StringTokenizer(nombrea, ".");
-                String nombreaa = st.nextToken();
-                String tipoa = st.nextToken();
-                String nombreb =  b.getDownloadName();
-                StringTokenizer stb = new StringTokenizer(nombreb, ".");
-                String nombrebb = stb.nextToken();
-                String tipob = stb.nextToken();
-                return tipoa.compareToIgnoreCase(tipob);
-            }
-        }
-        //Collections.reverse(DownloadArray);
-        Collections.sort(DownloadArray, new myComparator());
-        OpcionesDescargaAdapter OpcionesDescargaAdapter = new OpcionesDescargaAdapter(MainActivity.this, DownloadArray,listViewOpcionesDescarga,listenerLectura);
-        listViewOpcionesDescarga.setAdapter(OpcionesDescargaAdapter);
-        OpcionesDescargaAdapter.notifyDataSetChanged();
-        //new setListViewHeightBasedOnItems(listViewPersonalAsignado);
-        listViewOpcionesDescarga.setOnItemClickListener(MainActivity.this);
-        listViewOpcionesDescarga.refreshDrawableState();
-
-
-
+        });
     }
+
+    private void abrirArchivo(String NameFile) {
+        try {
+            File storageDir = Environment.getExternalStoragePublicDirectory(DIRECTORY_DOWNLOADS);
+            File file = new File(storageDir, NameFile);
+
+            if (!file.exists()) {
+                Toast.makeText(MainActivity.this, "El archivo no existe", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Uri photoUri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".provider", file);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+
+            String mimeType = "*/*";
+            String nameLower = NameFile.toLowerCase();
+
+            // Lógica para PDF, XML y Excel
+            if (nameLower.endsWith(".pdf")) {
+                mimeType = "application/pdf";
+            } else if (nameLower.endsWith(".xlsx") || nameLower.endsWith(".xls")) {
+                mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            } else if (nameLower.endsWith(".xml")) {
+                mimeType = "text/xml";
+            }
+
+            intent.setDataAndType(photoUri, mimeType);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            startActivity(Intent.createChooser(intent, "Abrir factura con..."));
+
+        } catch (Exception e) {
+            Toast.makeText(MainActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         if (parent.getId() == R.id.lvopcionesDescarga) {
@@ -676,7 +663,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     }
 
     private class MyWebChromeClient extends WebChromeClient{
-
         @Override
         public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
             Intent intent= new Intent();
@@ -701,30 +687,44 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    // Comprobar si existe o no conexión a internet
+                    // 1. Comprobar el estado real de la conexión
                     ConnectivityManager connectivityManager = (ConnectivityManager)
-                          getSystemService(Context.CONNECTIVITY_SERVICE);
+                            getSystemService(Context.CONNECTIVITY_SERVICE);
                     NetworkInfo info = connectivityManager.getActiveNetworkInfo();
-                    if (info == null || !info.isConnected() || !info.isAvailable()) {
-                      connectNew = false; // Desconectado
-                    } else {
-                      connectNew = true; // Conectado
-                    }
 
+                    // Actualizamos el estado actual
+                    connectNew = (info != null && info.isConnected() && info.isAvailable());
+
+                    // 2. Solo actuar si hubo un CAMBIO en el estado de conexión
                     if (connectNew != connectOld) {
-                        if (!connectNew) { //Desconectado.
+                        if (!connectNew) {
+                            // CASO: Se fue el internet
                             imageConnect.setVisibility(View.VISIBLE);
                             msjCon.setVisibility(View.VISIBLE);
                             msjConnection.setVisibility(View.VISIBLE);
-                            webView.setVisibility(View.INVISIBLE);
-                        } else { //Conectado.
+                            // No ocultes el WebView si quieres que el usuario vea lo que estaba haciendo
+                            // webView.setVisibility(View.INVISIBLE);
+                        } else {
+                            // CASO: Volvió el internet
                             imageConnect.setVisibility(View.INVISIBLE);
                             msjCon.setVisibility(View.INVISIBLE);
                             msjConnection.setVisibility(View.INVISIBLE);
                             webView.setVisibility(View.VISIBLE);
-                            chargeWeb(url);
+
+                            // --- PROTECCIÓN DE NAVEGACIÓN Y ACCIONES NATIVAS ---
+                            // Solo cargamos la URL base si el WebView está realmente vacío.
+                            // Esto evita que si el usuario está en un diálogo de descarga o enviando un WhatsApp,
+                            // la app lo devuelva al inicio por error.
+                            if (webView.getUrl() == null || webView.getUrl().isEmpty()) {
+                                chargeWeb(url);
+                            } else {
+                                // Opcional: Si el WebView está mostrando una página de error,
+                                // podrías hacer un webView.reload() para recuperar la página actual.
+                                Log.d("NetworkCheck", "Conexión restaurada, manteniendo URL actual: " + webView.getUrl());
+                            }
                         }
                     }
+                    // Guardamos el estado para la próxima ejecución del Timer
                     connectOld = connectNew;
                 }
             });
@@ -732,38 +732,47 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     }
 
-
     public class MyWebViewClient extends WebViewClient {
         private Uri mCapturedImageURI;
         private int FILECHOOSER_RESULTCODE=11;
         private ValueCallback<Uri> mUploadMessage;
 
+
+        @Override
+        public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+            // Esto te dirá el código de error real en el Logcat (ej: -8 para errores de SSL o -10 para DNS)
+            Log.e("WebViewError", "Error: " + error);
+        }
+
+        @Override
+        public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                //handler.proceed();
+        }
+
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url)
         {
-            deleteCache(context);
+            //deleteCache(context);
 
 
-            if (url.startsWith("http://api.whatsapp.com")) {
-                view.stopLoading();
+            if (url.startsWith("http://api.whatsapp.com") || url.startsWith("https://api.whatsapp.com") || url.startsWith("whatsapp://")) {
+                view.stopLoading(); // Detenemos el WebView para que no intente cargar una URL externa.
                 try {
                     Intent i = new Intent(Intent.ACTION_VIEW);
                     i.setData(Uri.parse(url));
                     startActivity(i);
                 } catch (android.content.ActivityNotFoundException ex) {
-
-                    String MakeShortText = "Whatsapp have not been installed";
-
-                    Toast.makeText(MainActivity.this, MakeShortText, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "WhatsApp no está instalado", Toast.LENGTH_SHORT).show();
                 }
-
-
-            }else{
-                view.getSettings().setJavaScriptEnabled(true);
-                view.loadUrl(url);
-                view.loadUrl( "javascript:window.location.reload( true )");
+                return true; // Indicamos que nosotros manejamos esta URL.
             }
-            return true;
+            //else{
+            //    view.getSettings().setJavaScriptEnabled(true);
+            //    view.loadUrl(url);
+            ////view.loadUrl( "javascript:window.location.reload( true )");
+            //}
+            //return true;
+            return false;
         }
         @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
         @Nullable
@@ -771,7 +780,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
             WebResourceResponse returnResponse = null;
             onLowMemory();
-            deleteCache(context);
+            //deleteCache(context);
             return super.shouldInterceptRequest(view, request);
         }
 
@@ -787,13 +796,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         {
             super.onPageStarted(view, url, favicon);
 
-           //if(objCommon.isOnline(context))
-           //    tvError.setVisibility(View.GONE);
-           //else
-           //    tvError.setVisibility(View.VISIBLE);
+            //if(objCommon.isOnline(context))
+            //    tvError.setVisibility(View.GONE);
+            //else
+            //    tvError.setVisibility(View.VISIBLE);
         }
-
-
 
         @Override
         public void onPageFinished(WebView view, String url) {
@@ -803,16 +810,16 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     public void run() {
                         injectCSS();
                         SplashLayout.animate()
-                            .translationY(0)
-                            .alpha(0.0f)
-                            .setDuration(200)
-                            .setListener(new AnimatorListenerAdapter() {
-                                @Override
-                                public void onAnimationEnd(Animator animation) {
-                                    super.onAnimationEnd(animation);
-                                    SplashLayout.setVisibility(View.GONE);
-                                }
-                            });
+                                .translationY(0)
+                                .alpha(0.0f)
+                                .setDuration(200)
+                                .setListener(new AnimatorListenerAdapter() {
+                                    @Override
+                                    public void onAnimationEnd(Animator animation) {
+                                        super.onAnimationEnd(animation);
+                                        SplashLayout.setVisibility(View.GONE);
+                                    }
+                                });
                     }
                 },200);
             }

@@ -1,6 +1,7 @@
 package com.facturasff.sff;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,17 +31,26 @@ public class OpcionesDescargaAdapter extends ArrayAdapter {
     }
 
     public View getView(int i, View view, ViewGroup viewgroup) {
-        view = LayoutInflater.from(context).inflate(R.layout.item_opcionesdescarga, null);
+        //view = LayoutInflater.from(context).inflate(R.layout.item_opcionesdescarga, null);
+
+        if (view == null) {
+            view = LayoutInflater.from(context).inflate(R.layout.item_opcionesdescarga, viewgroup, false);
+        }
         bindViews(view);
         setInformation(i);
-        Imagen.setOnClickListener(new View.OnClickListener() {
+        view.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View arg0) {
-                int pos = (int)arg0.getTag();
-                listener.mtdResultado(String.valueOf(pos));
-                OpcionesDescargaAdapter.this.notifyDataSetChanged();
-                //new setListViewHeightBasedOnItems(ListView);
+                if (listener != null) {
+                    try {
+                        listener.mtdResultado(String.valueOf(i));
+                    } catch (Exception e) {
+                        Log.e("ADAPTER_ERROR", "Error al enviar clic: " + e.getMessage());
+                    }
+
+                    OpcionesDescargaAdapter.this.notifyDataSetChanged();
+                }
             }
         });
 
